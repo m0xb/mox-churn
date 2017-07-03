@@ -25,7 +25,7 @@ def get_offer(offer_type, offer_name):
 @offers.route('/offer/<offer_type>', methods=['POST'])
 def create_offer(offer_type):
 	input_json = request.get_json()
-	cc_offer_args = input_json.copy()
+	offer_args = input_json.copy()
 
 	def parse_and_rename(d, old, new, parse):
 		v = d.pop(old)
@@ -44,21 +44,37 @@ def create_offer(offer_type):
 	def parse_money(s):
 		return decimal.Decimal(s)
 
-	parse_and_rename(cc_offer_args, 'bonus_requirement_fulfillment_duration_days', 'bonus_requirement_fulfillment_duration', timedelta_from_days)
-	parse_and_rename(cc_offer_args, 'bonus_requirement_account_open_duration_days', 'bonus_requirement_account_open_duration', timedelta_from_days)
-	parse(cc_offer_args, 'offer_start_date', parse_date)
-	parse(cc_offer_args, 'offer_end_date', parse_date)
-	parse(cc_offer_args, 'annual_fee', parse_money)
-	parse(cc_offer_args, 'annual_fee_first_year', parse_money)
-	parse(cc_offer_args, 'cash_bonus_amount', parse_money)
-	parse(cc_offer_args, 'bonus_requirement_purchase_amount', parse_money)
-	parse(cc_offer_args, 'bonus_requirement_purchase_count', int)
+	def validate_boolean(b):
+		if not (b is True or b is False):
+			raise Exception(f'Invalid boolean: {b}')
+		return b
 
-	cc_offer = CreditCardOffer(**cc_offer_args)
-	file_name = current_app.offer_storage.save(cc_offer)
+
+	parse(offer_args, 'cash_bonus_amount', parse_money)
+	parse(offer_args, 'offer_start_date', parse_date)
+	parse(offer_args, 'offer_end_date', parse_date)
+	parse_and_rename(offer_args, 'bonus_requirement_fulfillment_duration_days', 'bonus_requirement_fulfillment_duration', timedelta_from_days)
+	parse_and_rename(offer_args, 'bonus_requirement_account_open_duration_days', 'bonus_requirement_account_open_duration', timedelta_from_days)
+	parse(offer_args, 'bonus_requirement_purchase_amount', parse_money)
+	parse(offer_args, 'bonus_requirement_purchase_count', int)
+
+	if offer_type == CreditCardOffer.get_offer_type():
+		parse(offer_args, 'annual_fee', parse_money)
+		parse(offer_args, 'annual_fee_first_year', parse_money)
+		offer = CreditCardOffer(**offer_args)
+	elif offer_type == CheckingAccountOffer.get_offer_type():
+		parse(offer_args, 'bonus_requirement_deposit_amount', parse_money)
+		parse(offer_args, 'bonus_requirement_direct_deposit', validate_boolean)
+		parse(offer_args, 'monthly_fee', parse_money)
+		offer = CheckingAccountOffer(**offer_args)
+	else:
+		raise JsonError(description=f'Invalid offer type: {offer_type}')
+
+	file_name = current_app.offer_storage.save(offer)
 
 	return json_response(
 		created = True,
+		offerType = offer_type,
 		fileName = file_name,
 	)
 

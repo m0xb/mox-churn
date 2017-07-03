@@ -63,12 +63,53 @@ class AppTestCase(unittest.TestCase):
 		self.assertEqual(0, data['offer']['annual_fee_first_year'])
 		self.assertEqual('https://creditcards.chase.com/a1/sapphire/compare?CELL=64DW', data['offer']['offer_url'])
 
+	def test_checking_offer(self):
+		result = self.client.post('/offer/checking',
+			data=json.dumps({
+				'name': 'Everyday Checking',
+				'bank': 'Wells Fargo',
+				'offer_start_date': '2017-01-01',
+				'offer_end_date': '2017-12-31',
+				'cash_bonus_amount': 200.00,
+				'bonus_requirement_purchase_amount': 2000.00,
+				'bonus_requirement_deposit_amount': 0.00,
+				'bonus_requirement_direct_deposit': False,
+				'bonus_requirement_purchase_count': 0,
+				'bonus_requirement_fulfillment_duration_days': 90,
+				'bonus_requirement_account_open_duration_days': 180,
+				'monthly_fee': 10.00,
+				'offer_url': 'https://www.wellsfargo.com/checking/everyday/'
+			}),
+			content_type='application/json'
+		)
+		self.assertEqual(200, result.status_code)
+		data = json.loads(result.get_data())
+		self.assertEqual(True, data['created'])
+		self.assertEqual('CheckingAccountOffer_Everyday_Checking.json', data['fileName'])
+
+		result = self.client.get('/offer/checking/Everyday_Checking')
+		self.assertEqual(200, result.status_code)
+		data = json.loads(result.get_data())
+		self.assertEqual('Everyday Checking', data['offer']['name'])
+		self.assertEqual('Wells Fargo', data['offer']['bank'])
+		self.assertEqual('2017-01-01', data['offer']['offer_start_date'])
+		self.assertEqual('2017-12-31', data['offer']['offer_end_date'])
+		self.assertEqual(200, data['offer']['cash_bonus_amount'])
+		self.assertEqual(2000, data['offer']['bonus_requirement_purchase_amount'])
+		self.assertEqual(0, data['offer']['bonus_requirement_deposit_amount'])
+		self.assertEqual(False, data['offer']['bonus_requirement_direct_deposit'])
+		self.assertEqual(0, data['offer']['bonus_requirement_purchase_count'])
+		self.assertEqual(90, data['offer']['bonus_requirement_fulfillment_duration'])
+		self.assertEqual(180, data['offer']['bonus_requirement_account_open_duration'])
+		self.assertEqual(10, data['offer']['monthly_fee'])
+		self.assertEqual('https://www.wellsfargo.com/checking/everyday/', data['offer']['offer_url'])
+
 	def test_search_offers(self):
-		TestHelper.create_offer(self.client, 'credit', 'Offer #1 C', 'Chase')
-		TestHelper.create_offer(self.client, 'credit', 'Offer #2 WF', 'Wells Fargo')
-		TestHelper.create_offer(self.client, 'credit', 'Offer #3 C', 'Chase')
-		TestHelper.create_offer(self.client, 'credit', 'Offer #4 WF', 'Wells Fargo')
-		TestHelper.create_offer(self.client, 'credit', 'Offer #5 B', 'Barclays')
+		TestHelper.create_cc_offer(self.client, 'Offer #1 C', 'Chase')
+		TestHelper.create_cc_offer(self.client, 'Offer #2 WF', 'Wells Fargo')
+		TestHelper.create_cc_offer(self.client, 'Offer #3 C', 'Chase')
+		TestHelper.create_cc_offer(self.client, 'Offer #4 WF', 'Wells Fargo')
+		TestHelper.create_cc_offer(self.client, 'Offer #5 B', 'Barclays')
 
 		result = self.client.get('/offers')
 		self.assertEqual(200, result.status_code)
@@ -103,8 +144,8 @@ class AppTestCase(unittest.TestCase):
 
 class TestHelper:
 	@staticmethod
-	def create_offer(test_client, offer_type, offer_name, issuer):
-		result = test_client.post(f'/offer/{offer_type}',
+	def create_cc_offer(test_client, offer_name, issuer):
+		result = test_client.post(f'/offer/credit',
 			data=json.dumps({
 				'name': offer_name,
 				'card_type': random.choice(['Visa', 'American Express']),
