@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Blueprint, Flask, request, current_app
 import datetime
 import decimal
 from flask_json import FlaskJSON, JsonError, json_response, as_json
@@ -6,26 +6,24 @@ import json
 import jsonpickle
 import os
 from pathlib import Path
-from moxchurn import app
 from moxchurn.models import *
 
-app_dir = Path(__file__).parent.parent
-data_dir = app_dir / '.mox-churn-data'
 
-offer_storage = JsonOfferStorage(data_dir / 'offers')
+offers = Blueprint('moxchurn', __name__)
 
-@app.route('/')
+@offers.route('/')
 def index():
 	return "Mox Churn"
 
-@app.route('/offer/<offer_type>/<offer_name>', methods=['GET'])
+@offers.route('/offer/<offer_type>/<offer_name>', methods=['GET'])
 def get_offer(offer_type, offer_name):
-	offer = offer_storage.load_single(offer_type, offer_name)
-
+	offer = current_app.offer_storage.load_single(offer_type, offer_name)
+	if not offer:
+		return json_response(status_=404, offer = None)
 	return json_response(offer=offer)
 
-@app.route('/offer', methods=['POST'])
-def create_offer():
+@offers.route('/offer/<offer_type>', methods=['POST'])
+def create_offer(offer_type):
 	input_json = request.get_json()
 	cc_offer_args = input_json.copy()
 
@@ -57,12 +55,15 @@ def create_offer():
 	parse(cc_offer_args, 'bonus_requirement_purchase_count', int)
 
 	cc_offer = CreditCardOffer(**cc_offer_args)
-	file_name = offer_storage.save(cc_offer)
+	file_name = current_app.offer_storage.save(cc_offer)
 
-	return json_response(created = True, fileName = file_name)
+	return json_response(
+		created = True,
+		fileName = file_name,
+	)
 
-@app.route('/offers')
-@app.route('/offers/<offer_type>')
+@offers.route('/offers')
+@offers.route('/offers/<offer_type>')
 def get_offers(offer_type=None):
 	def validate_string(s):
 		if s == '':
@@ -71,4 +72,4 @@ def get_offers(offer_type=None):
 
 	issuer = validate_string(request.args.get('issuer'))
 
-	return json_response(offers=offer_storage.load(offer_type, issuer = issuer))
+	return json_response(offers=current_app.offer_storage.load(offer_type, issuer = issuer))
