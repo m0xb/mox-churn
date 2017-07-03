@@ -7,25 +7,17 @@ import datetime
 class Offer(object):
 	@staticmethod
 	def get_class_for_offer_type(offer_type):
-		mapping = {
-			'credit': CreditCardOffer,
-		}
+		mapping = {t.get_offer_type(): t for t in [CreditCardOffer]}
 		if offer_type not in mapping:
 			raise Exception(f"Unrecognized offer type: {offer_type}")
 		return mapping[offer_type]
-
-	def get_qualified_name(self):
-		'''
-		The type of offer appended with the name of the offer.
-		'''
-		raise NotImplementedError()
 
 	def to_json_encodable(self):
 		raise NotImplementedError()
 
 class CreditCardOffer(Offer):
 
-	VERSION = 4
+	VERSION = 5
 
 	def __init__(self, name, card_type, issuer, offer_start_date, offer_end_date, cash_bonus_amount, bonus_requirement_purchase_amount, bonus_requirement_purchase_count, bonus_requirement_fulfillment_duration, bonus_requirement_account_open_duration, annual_fee, annual_fee_first_year, offer_url):
 		self.version = self.VERSION
@@ -44,14 +36,15 @@ class CreditCardOffer(Offer):
 		self.offer_url = offer_url
 		self.created_date = datetime.datetime.now()
 
-	def get_qualified_name(self):
-		return type(self).__name__ + ' ' + self.name
-
 	def to_json_encodable(self):
 		d = self.__dict__
 		d.pop('version')
 		d.pop('created_date')
 		return d
+
+	@staticmethod
+	def get_offer_type():
+		return 'credit'
 
 
 class JsonOfferStorage:
@@ -73,7 +66,7 @@ class JsonOfferStorage:
 
 	def save(self, offer):
 		self.ensure_folder()
-		file_name = self.escape_for_file_name(offer.get_qualified_name()) + '.json'
+		file_name = self.get_offer_type_prefix(offer.get_offer_type()) + self.escape_for_file_name(offer.name) + '.json'
 		with open(self.data_dir / file_name, 'w') as fp:
 			fp.write(jsonpickle.encode(offer))
 		return file_name
