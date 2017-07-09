@@ -1,5 +1,6 @@
 import json
 import moxchurn
+from moxchurn.common import get_storage
 import os
 from pathlib import Path
 import random
@@ -10,10 +11,13 @@ class AppTestCase(unittest.TestCase):
 
 	def setUp(self):
 		self.tmp_data_dir = tempfile.TemporaryDirectory()
-		self.app = moxchurn.create_app(Path(self.tmp_data_dir.name))
+		self.app = moxchurn.create_app(get_storage(data_dir=Path(self.tmp_data_dir.name)))
 		self.client = self.app.test_client()
 
 	def tearDown(self):
+		self.app.offer_storage.session.close()
+		self.client = None
+		self.app = None
 		self.tmp_data_dir.cleanup()
 
 	def test_not_found(self):
@@ -44,9 +48,9 @@ class AppTestCase(unittest.TestCase):
 		self.assertEqual(200, result.status_code)
 		data = json.loads(result.get_data())
 		self.assertEqual(True, data['created'])
-		self.assertEqual('CreditCardOffer_Chase_Sapphire_Preferred.json', data['fileName'])
+		self.assertEqual('Chase Sapphire Preferred', data['name'])
 
-		result = self.client.get('/offer/credit/Chase_Sapphire_Preferred')
+		result = self.client.get('/offer/credit/Chase Sapphire Preferred')
 		self.assertEqual(200, result.status_code)
 		data = json.loads(result.get_data())
 		self.assertEqual('Chase Sapphire Preferred', data['offer']['name'])
@@ -85,9 +89,9 @@ class AppTestCase(unittest.TestCase):
 		self.assertEqual(200, result.status_code)
 		data = json.loads(result.get_data())
 		self.assertEqual(True, data['created'])
-		self.assertEqual('CheckingAccountOffer_Everyday_Checking.json', data['fileName'])
+		self.assertEqual('Everyday Checking', data['name'])
 
-		result = self.client.get('/offer/checking/Everyday_Checking')
+		result = self.client.get('/offer/checking/Everyday Checking')
 		self.assertEqual(200, result.status_code)
 		data = json.loads(result.get_data())
 		self.assertEqual('Everyday Checking', data['offer']['name'])

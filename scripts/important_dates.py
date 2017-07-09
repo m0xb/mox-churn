@@ -15,10 +15,8 @@ def parse_date(s):
 def main(args):
 	#print(f"args={args}")
 
-	app_dir = Path(__file__).parent.parent
-	data_dir = app_dir / Constants.DEFAULT_DATA_DIR_NAME
-	offer_storage = JsonOfferStorage(data_dir / 'offers')
-	offer = offer_storage.load_single('credit', args.offer)
+	offer_storage = get_storage()
+	offer = offer_storage.load_single(CreditCardOffer, args.offer)
 	if not offer:
 		print(f"No such offer: {args.offer}")
 		sys.exit(1)

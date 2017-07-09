@@ -17,7 +17,7 @@ def index():
 
 @offers.route('/offer/<offer_type>/<offer_name>', methods=['GET'])
 def get_offer(offer_type, offer_name):
-	offer = current_app.offer_storage.load_single(offer_type, offer_name)
+	offer = current_app.offer_storage.load_single(Offer.get_class_for_offer_type(offer_type), offer_name)
 	if not offer:
 		return json_response(status_=404, offer = None)
 	return json_response(offer=offer)
@@ -70,12 +70,12 @@ def create_offer(offer_type):
 	else:
 		raise JsonError(description=f'Invalid offer type: {offer_type}')
 
-	file_name = current_app.offer_storage.save(offer)
+	current_app.offer_storage.save(offer)
 
 	return json_response(
 		created = True,
 		offerType = offer_type,
-		fileName = file_name,
+		name = offer_args['name'],
 	)
 
 @offers.route('/offers')
@@ -88,4 +88,4 @@ def get_offers(offer_type=None):
 
 	issuer = validate_string(request.args.get('issuer'))
 
-	return json_response(offers=current_app.offer_storage.load(offer_type, issuer = issuer))
+	return json_response(offers=current_app.offer_storage.load(Offer.get_class_for_offer_type(offer_type) if offer_type else None, issuer = issuer))

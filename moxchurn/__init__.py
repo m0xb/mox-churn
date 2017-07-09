@@ -3,17 +3,16 @@ from flask_json import FlaskJSON
 from decimal import Decimal
 from datetime import datetime, timedelta
 from moxchurn.blueprints.offers import offers
-from moxchurn.models import JsonOfferStorage
 
-def create_app(data_dir):
+def create_app(offer_storage):
 	app = Flask(__name__)
 	app.config.update(dict(
-		DATA_DIR=data_dir,
+		OFFER_STORAGE=offer_storage,
 	))
 	json = FlaskJSON(app)
 
 	app.register_blueprint(offers)
-	app.offer_storage = JsonOfferStorage(data_dir / 'offers')
+	app.offer_storage = offer_storage
 
 	@json.encoder
 	def custom_encoder(o):
